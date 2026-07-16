@@ -61,12 +61,13 @@
         "LICENSE"
     ],
     "scripts": {
-        "build": "node node_modules/typescript/bin/tsc -p tsconfig.build.json",
+        "build": "npm run clean && node node_modules/typescript/bin/tsc -p tsconfig.build.json",
         "build:runtime": "npm run build",
         "build:watch": "npm run build -- --watch",
         "changelog:generate": "git cliff --config node_modules/gitcliff-config-nick2bad4u/cliff.toml --github-repo Nick2bad4u/playwright-config-nick2bad4u --output CHANGELOG.md",
         "changelog:preview": "git cliff --config node_modules/gitcliff-config-nick2bad4u/cliff.toml --github-repo Nick2bad4u/playwright-config-nick2bad4u --unreleased",
         "changelog:release-notes": "git cliff --config node_modules/gitcliff-config-nick2bad4u/cliff.toml --github-repo Nick2bad4u/playwright-config-nick2bad4u --current",
+        "clean": "node scripts/clean-dist.mjs",
         "coverage": "vitest run --coverage",
         "lint": "cross-env NODE_OPTIONS=--max_old_space_size=8192 eslint . --cache --cache-strategy content --cache-location .cache/.eslintcache",
         "lint:actions": "actionlint -config-file actionlint.yml",
