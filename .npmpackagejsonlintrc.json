@@ -1,0 +1,13 @@
+{
+    "extends": "npm-package-json-lint-config-nick2bad4u",
+    "rules": {
+        "prefer-caret-version-devDependencies": [
+            "error",
+            {
+                "exceptions": [
+                    "@typescript/native"
+                ]
+            }
+        ]
+    }
+}
