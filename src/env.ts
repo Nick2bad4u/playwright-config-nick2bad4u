@@ -23,6 +23,8 @@ const TRUE_VALUES = new Set([
     "yes",
 ]);
 
+type LaunchArgumentQuote = "'" | '"';
+
 /** Test the conventional truthy environment spellings used by CI systems. */
 export function isBooleanFlagEnabled(value: string | undefined): boolean {
     return isDefined(value)
@@ -46,10 +48,7 @@ export function parseLaunchArguments(value: string | undefined): string[] {
 
     const result: string[] = [];
     let current = "";
-    let quote:
-        | "'"
-        | '"'
-        | undefined;
+    let quote: LaunchArgumentQuote | undefined;
 
     for (let index = 0; index < value.length; index += 1) {
         const character = value[index];
@@ -58,37 +57,27 @@ export function parseLaunchArguments(value: string | undefined): string[] {
         }
 
         if (character === "\\") {
-            const next = value[index + 1];
-            if (
-                next === "\\" ||
-                next === '"' ||
-                next === "'" ||
-                (isDefined(next) && /\s/v.test(next))
-            ) {
-                current += next;
-                index += 1;
-            } else {
-                current += character;
-            }
+            const [escapedCharacter, nextIndex] = readEscapedLaunchCharacter(
+                value,
+                index
+            );
+            current += escapedCharacter;
+            index = nextIndex;
             continue;
         }
 
-        if (character === '"' || character === "'") {
-            if (quote === character) {
-                quote = undefined;
-            } else if (isDefined(quote)) {
-                current += character;
-            } else {
-                quote = character;
-            }
+        if (isLaunchArgumentQuote(character)) {
+            const [nextQuote, literalCharacter] = readLaunchArgumentQuote(
+                character,
+                quote
+            );
+            quote = nextQuote;
+            current += literalCharacter;
             continue;
         }
 
-        if (!isDefined(quote) && /\s/v.test(character)) {
-            if (current !== "") {
-                result.push(current);
-                current = "";
-            }
+        if (isLaunchArgumentSeparator(character, quote)) {
+            current = pushLaunchArgument(result, current);
             continue;
         }
 
@@ -99,9 +88,7 @@ export function parseLaunchArguments(value: string | undefined): string[] {
         throw new RangeError("Unterminated quote in PLAYWRIGHT_CHROMIUM_ARGS.");
     }
 
-    if (current !== "") {
-        result.push(current);
-    }
+    pushLaunchArgument(result, current);
 
     return result;
 }
@@ -173,6 +160,55 @@ export function resolvePlaywrightEnvironment(
             defaultWorkers
         ),
     });
+}
+
+function isEscapableLaunchCharacter(
+    character: string | undefined
+): character is string {
+    return isDefined(character) && /[\s"'\\]/v.test(character);
+}
+
+function isLaunchArgumentQuote(
+    character: string
+): character is LaunchArgumentQuote {
+    return character === '"' || character === "'";
+}
+
+function isLaunchArgumentSeparator(
+    character: string,
+    activeQuote: LaunchArgumentQuote | undefined
+): boolean {
+    return !isDefined(activeQuote) && /\s/v.test(character);
+}
+
+function pushLaunchArgument(result: string[], current: string): "" {
+    if (current !== "") {
+        result.push(current);
+    }
+
+    return "";
+}
+
+function readEscapedLaunchCharacter(
+    value: string,
+    index: number
+): readonly [character: string, nextIndex: number] {
+    const next = value[index + 1];
+    return isEscapableLaunchCharacter(next) ? [next, index + 1] : ["\\", index];
+}
+
+function readLaunchArgumentQuote(
+    character: LaunchArgumentQuote,
+    activeQuote: LaunchArgumentQuote | undefined
+): readonly [
+    activeQuote: LaunchArgumentQuote | undefined,
+    literalCharacter: string,
+] {
+    if (activeQuote === character) {
+        return [undefined, ""];
+    }
+
+    return isDefined(activeQuote) ? [activeQuote, character] : [character, ""];
 }
 
 export default resolvePlaywrightEnvironment;
