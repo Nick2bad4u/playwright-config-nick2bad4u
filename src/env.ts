@@ -49,20 +49,24 @@ export function parseLaunchArguments(value: string | undefined): string[] {
     const result: string[] = [];
     let current = "";
     let quote: LaunchArgumentQuote | undefined;
+    let skipNextCharacter = false;
 
     for (let index = 0; index < value.length; index += 1) {
+        if (skipNextCharacter) {
+            skipNextCharacter = false;
+            continue;
+        }
+
         const character = value[index];
         if (!isDefined(character)) {
             continue;
         }
 
         if (character === "\\") {
-            const [escapedCharacter, nextIndex] = readEscapedLaunchCharacter(
-                value,
-                index
-            );
+            const [escapedCharacter, consumesNextCharacter] =
+                readEscapedLaunchCharacter(value, index);
             current += escapedCharacter;
-            index = nextIndex;
+            skipNextCharacter = consumesNextCharacter;
             continue;
         }
 
@@ -192,9 +196,9 @@ function pushLaunchArgument(result: string[], current: string): "" {
 function readEscapedLaunchCharacter(
     value: string,
     index: number
-): readonly [character: string, nextIndex: number] {
+): readonly [character: string, consumesNextCharacter: boolean] {
     const next = value[index + 1];
-    return isEscapableLaunchCharacter(next) ? [next, index + 1] : ["\\", index];
+    return isEscapableLaunchCharacter(next) ? [next, true] : ["\\", false];
 }
 
 function readLaunchArgumentQuote(
